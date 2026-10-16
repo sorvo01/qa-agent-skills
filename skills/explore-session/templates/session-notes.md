@@ -8,10 +8,10 @@
 
 | Time | Tag | Note | Evidence |
 |---|---|---|---|
-| 10:02 | TEST | Upgrade Membership → Supporter with no card on file | |
-| 10:05 | BUG | Plan switched to Supporter, no charge, no card requested | shot-01.png, POST /api/subscription 200 |
-| 10:09 | ISSUE | Billing history empty after upgrade: expected or missing? | |
-| 10:15 | IDEA | Separate charter: downgrade and cancel timing | |
+| 10:02 | TEST | Viewer opens a shared project; Edit and Delete are hidden | |
+| 10:06 | BUG | Bulk-actions menu still offers "Delete selected" to the Viewer | shot-01.png, POST /api/projects/bulk-delete 200 |
+| 10:12 | ISSUE | CSV export as Viewer includes the private notes column: expected? | |
+| 10:24 | IDEA | Separate charter: Editor demoted in the middle of a session | |
 
 ## Debrief
 

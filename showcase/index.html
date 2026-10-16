@@ -85,7 +85,7 @@ footer{border-top:1px solid var(--rule);padding-top:24px;display:grid;gap:8px;co
 <div class="wrap">
 <header>
   <h1>QA Agent Skills</h1>
-  <p class="lede">Six skills for Claude Code that cover a tester's working week: test cases, automated tests, CI on GitHub Actions, load testing with k6, exploratory sessions and Web3 dApps with Synpress. Each section below shows a simulated run of the skill and a real case it is based on.</p>
+  <p class="lede">Six skills for Claude Code that cover a tester's working week: test cases, automated tests, CI on GitHub Actions, load testing with k6, exploratory sessions and Web3 dApps with Synpress. Each section below shows a simulated run of the skill and, where there is one, the real project it comes from.</p>
   <div class="install"><code>git clone https://github.com/sorvo01/qa-agent-skills &amp;&amp; cp -r qa-agent-skills/skills/* ~/.claude/skills/</code></div>
   <div class="legend"><span><span class="chip info">SIM</span> simulated run, reproducible from the repo</span><span><span class="chip ok">REAL</span> real project, client details removed</span></div>
   <nav class="index" aria-label="Skills">
@@ -232,35 +232,23 @@ Running 2 tests using 1 worker
 
 <section class="skill" id="explore-session">
   <div class="skill-head"><span class="id">skills/explore-session</span><h2>Exploration with a charter and a debrief</h2><p>One-line charter, three to five heuristics that fit the target, tagged notes with evidence captured on the spot, and a debrief that says what was covered and what was not.</p></div>
-  <div class="cols">
-    <div class="panel"><h3><span class="chip info">SIM</span> Session notes</h3>
-<pre class="log"><span class="a">charter</span>  Explore plan upgrade with no saved card
-         to discover whether access changes without a payment   <span class="d">60 min</span>
-<span class="a">heuristics</span>  Money · Interruptions · Consistency
+  <div class="panel"><h3><span class="chip info">SIM</span> Session notes: project sharing</h3>
+<pre class="log"><span class="a">charter</span>  Explore project sharing with a Viewer and an Editor in two browsers
+         to discover what a Viewer can change through the UI and the API   <span class="d">60 min</span>
+<span class="a">heuristics</span>  Roles and ownership · Repetition · Consistency
 
-10:02 TEST  Membership → Supporter, payment info says "no card on file"
-10:04 <span class="f">BUG</span>   plan switched at once, no card asked, no charge
-            <span class="d">evidence: shot-01.png, POST /subscription 200</span>
-10:09 <span class="w">ISSUE</span> billing history empty: expected or missing?
-10:15 TEST  cancel → confirm → reload
-10:16 <span class="f">BUG</span>   still "Active", next payment date unchanged
-10:21 IDEA  separate charter: downgrade timing
+10:02 TEST  Viewer opens a shared project: Edit and Delete are hidden
+10:06 <span class="f">BUG</span>   bulk-actions menu still offers "Delete selected" to the Viewer
+            <span class="d">evidence: shot-01.png, POST /api/projects/bulk-delete 200</span>
+10:09 TEST  same call with the Viewer token from the API client → 200, project gone
+10:12 <span class="w">ISSUE</span> CSV export as Viewer includes the private notes column: expected?
+10:18 TEST  Editor and Viewer rename the same project in two tabs
+10:19 <span class="f">BUG</span>   last write wins silently, no conflict message
+10:24 IDEA  separate charter: what changes when an Editor is demoted mid-session
 
-<span class="a">debrief</span>  covered upgrade + cancel; not reached: refunds
-         confidence in billing: <span class="f">low</span></pre>
-    </div>
-    <div class="panel"><h3><span class="chip ok">REAL</span> Subscription content platform, paid trial</h3>
-      <div class="case">
-        <p class="ctx">Paid exploratory trial of a creator subscription platform across roles (creator, subscriber, pending user), Chrome desktop, mobile widths and Safari on iPhone. Bugs, UX recommendations and coverage reported separately.</p>
-        <div class="facts"><div class="fact"><b>20</b><span>confirmed bugs</span></div><div class="fact"><b>6</b><span>P1 critical</span></div><div class="fact"><b>3</b><span>browsers and devices</span></div></div>
-        <ul class="find">
-          <li><span class="chip p1">P1</span><span>A card payment went through, but no subscription or access was granted.</span></li>
-          <li><span class="chip p1">P1</span><span>Plan upgrade worked with no payment method on file.</span></li>
-          <li><span class="chip p1">P1</span><span>The edit URL of a post returned another creator's private text to any signed-in user.</span></li>
-          <li><span class="chip p2">P2</span><span>Plan prices on the cards did not match the checkout total.</span></li>
-        </ul>
-      </div>
-    </div>
+<span class="a">debrief</span>  covered UI + API for Viewer; not reached: invitations, audit log
+         bugs: 1 × P1 (Viewer can delete), 1 × P3 (silent overwrite)
+         confidence in sharing: <span class="f">low</span></pre>
   </div>
 </section>
 
