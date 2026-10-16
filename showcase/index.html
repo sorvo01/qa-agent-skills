@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QA Agent Skills</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: a test-run notebook. Index strip of six skills, then one section per skill:
+   simulated run on the left (log panel), real case on the right (outcome card). */
+:root{
+  --paper:#f6f7f9; --sheet:#ffffff; --ink:#151a2d; --muted:#5a6178; --rule:#dde1ea;
+  --accent:#2b3fd6; --accent-soft:#e7eafc;
+  --pass:#1f7a4d; --pass-soft:#e3f3ea; --fail:#b42335; --fail-soft:#fbe7ea; --warn:#9a5b00; --warn-soft:#fdf0db;
+  --log-bg:#10142a; --log-fg:#d9def0; --log-dim:#8b93b3;
+  --display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body:"Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1120; --sheet:#151a2d; --ink:#e8ebf6; --muted:#a2a9c3; --rule:#2a3150;
+  --accent:#8c9bff; --accent-soft:#1f2650;
+  --pass:#5fd39a; --pass-soft:#123326; --fail:#ff7b8c; --fail-soft:#3a1720; --warn:#f2b155; --warn-soft:#3a2a10;
+  --log-bg:#090b17; --log-fg:#d9def0; --log-dim:#7c84a6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0e1120; --sheet:#151a2d; --ink:#e8ebf6; --muted:#a2a9c3; --rule:#2a3150;
+  --accent:#8c9bff; --accent-soft:#1f2650;
+  --pass:#5fd39a; --pass-soft:#123326; --fail:#ff7b8c; --fail-soft:#3a1720; --warn:#f2b155; --warn-soft:#3a2a10;
+  --log-bg:#090b17; --log-fg:#d9def0; --log-dim:#7c84a6; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:16px/1.6 var(--body);margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(2rem,5vw,3.1rem);font-weight:700;letter-spacing:-.02em}
+h2{font-size:1.65rem;font-weight:700}
+h3{font-size:1rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+p{margin:0;max-width:65ch}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+code,.mono{font-family:var(--mono);font-size:.88em}
+header{display:grid;gap:16px}
+.lede{font-size:1.1rem;color:var(--muted)}
+.install{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.install code{background:var(--sheet);border:1px solid var(--rule);padding:8px 12px;border-radius:6px;overflow-x:auto;max-width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.85rem;color:var(--muted)}
+.index{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.index a{display:grid;gap:4px;text-decoration:none;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:12px 14px}
+.index a:hover{border-color:var(--accent)}
+.index .n{font-family:var(--mono);font-size:.75rem;color:var(--accent)}
+.index .t{font-weight:600;font-size:.95rem}
+section.skill{display:grid;gap:20px;padding-top:32px;border-top:1px solid var(--rule)}
+.skill-head{display:grid;gap:8px}
+.skill-head .id{font-family:var(--mono);color:var(--accent);font-size:.85rem}
+.cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+.panel{display:grid;gap:12px;min-width:0}
+.log{background:var(--log-bg);color:var(--log-fg);border-radius:8px;padding:16px;font:13px/1.55 var(--mono);overflow-x:auto;white-space:pre;margin:0}
+.log .d{color:var(--log-dim)} .log .p{color:#6fe0a6} .log .f{color:#ff8f9e} .log .w{color:#f5bf6b} .log .a{color:#a9b4ff}
+.case{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:18px;display:grid;gap:12px;min-width:0}
+.case .ctx{font-size:.9rem;color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.fact{border-left:3px solid var(--accent);padding:2px 0 2px 10px}
+.fact b{display:block;font-family:var(--display);font-size:1.4rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.fact span{font-size:.8rem;color:var(--muted)}
+ul.find{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+ul.find li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:.95rem}
+.chip{font:500 .7rem/1 var(--mono);padding:4px 7px;border-radius:999px;white-space:nowrap;letter-spacing:.02em}
+.chip.p1{background:var(--fail-soft);color:var(--fail)} .chip.p2{background:var(--warn-soft);color:var(--warn)}
+.chip.ok{background:var(--pass-soft);color:var(--pass)} .chip.info{background:var(--accent-soft);color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+.tbl{overflow-x:auto}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.note{font-size:.85rem;color:var(--muted)}
+footer{border-top:1px solid var(--rule);padding-top:24px;display:grid;gap:8px;color:var(--muted);font-size:.9rem}
+@media (prefers-reduced-motion:no-preference){.index a{transition:border-color .15s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <h1>QA Agent Skills</h1>
+  <p class="lede">Six skills for Claude Code that cover a tester's working week: test cases, automated tests, CI on GitHub Actions, load testing with k6, exploratory sessions and Web3 dApps with Synpress. Each section below shows a simulated run of the skill and a real case it is based on.</p>
+  <div class="install"><code>git clone https://github.com/sorvo01/qa-agent-skills &amp;&amp; cp -r qa-agent-skills/skills/* ~/.claude/skills/</code></div>
+  <div class="legend"><span><span class="chip info">SIM</span> simulated run, reproducible from the repo</span><span><span class="chip ok">REAL</span> real project, client details removed</span></div>
+  <nav class="index" aria-label="Skills">
+    <a href="#testcase-designer"><span class="n">1 · design</span><span class="t">testcase-designer</span></a>
+    <a href="#autotest-builder"><span class="n">2 · automate</span><span class="t">autotest-builder</span></a>
+    <a href="#ci-github-actions"><span class="n">3 · run in CI</span><span class="t">ci-github-actions</span></a>
+    <a href="#perf-load-k6"><span class="n">4 · load</span><span class="t">perf-load-k6</span></a>
+    <a href="#explore-session"><span class="n">5 · explore</span><span class="t">explore-session</span></a>
+    <a href="#web3-synpress"><span class="n">6 · web3</span><span class="t">web3-synpress</span></a>
+  </nav>
+</header>
+
+<section class="skill" id="testcase-designer">
+  <div class="skill-head"><span class="id">skills/testcase-designer</span><h2>From a story to risk-ranked test cases</h2><p>Builds a risk table first, picks a technique per input (boundaries, decision tables, state transitions, role matrix) and only then writes cases. Every case points to a risk and names the bug it would catch.</p></div>
+  <div class="cols">
+    <div class="panel"><h3><span class="chip info">SIM</span> Story: "Viewer can see but not change a project"</h3>
+<pre class="log"><span class="d">$ claude "/testcase-designer STORY-12, output CSV"</span>
+<span class="a">risk table</span>
+  R1 Viewer changes data through the API      impact H  likelihood M
+  R2 Viewer sees Edit/Delete in the UI         impact M  likelihood M
+  R3 Role change not applied until re-login    impact M  likelihood L
+<span class="a">techniques</span>  role x action matrix, deny cases first
+<span class="a">cases</span>
+  TC-AUTH-003  P1  R1  Viewer DELETE /api/projects/:id → 403, project still exists
+  TC-AUTH-004  P1  R1  Viewer PATCH with extra field ownerId → rejected, owner unchanged
+  TC-AUTH-005  P2  R2  Viewer opens project → no Edit, no Delete, no bulk actions
+  TC-AUTH-006  P2  R3  Admin demotes Editor → next request is denied without re-login
+<span class="a">self-check</span>
+  <span class="p">✓</span> every H risk has a negative case
+  <span class="p">✓</span> every role has a deny case
+  <span class="w">!</span> R3: ask PO, is a 5 min token lifetime acceptable? (yes/no)</pre>
+    </div>
+    <div class="panel"><h3><span class="chip ok">REAL</span> Treasury management SaaS</h3>
+      <div class="case">
+        <p class="ctx">Multi-tenant SaaS for ACH/EFT payment origination and accounting integrations. Test cases written from user stories, linked to the story keys, and imported into the team's Jira test management tool; end-to-end and API coverage on top.</p>
+        <ul class="find">
+          <li><span class="chip info">practice</span><span>Money movement and tenant isolation get cases first; cosmetic checks last.</span></li>
+          <li><span class="chip info">practice</span><span>Check the CSV before import: story keys, required fields, duplicates, broken rows.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="skill" id="autotest-builder">
+  <div class="skill-head"><span class="id">skills/autotest-builder</span><h2>Automated tests that fail for the right reason</h2><p>Picks the cheapest layer that still catches the bug, uses role-based locators, waits for states instead of sleeping, creates its own data and proves each test can fail before calling it done.</p></div>
+  <div class="cols">
+    <div class="panel"><h3><span class="chip info">SIM</span> Example spec from the repo, real run</h3>
+<pre class="log"><span class="d">$ npx playwright test examples/todo-flow.spec.ts</span>
+Running 2 tests using 1 worker
+  <span class="p">✓</span> todo list › user adds two todos and completes one → counter shows 1 item left
+  <span class="p">✓</span> todo list › empty todo is not added
+  <span class="p">2 passed (3.5s)</span>
+
+<span class="d">$ npx tsc --noEmit --strict examples/*.ts</span>
+<span class="p">no errors</span>
+
+<span class="d"># definition of done: break it once on purpose</span>
+<span class="d">$ # change the expected counter to '2 items left' and run again</span>
+  <span class="f">✗</span> Expected: "2 items left"
+    Received: "1 item left"
+  <span class="f">1 failed</span>, <span class="p">1 passed</span>
+<span class="d">→ the failure names the behaviour; revert</span></pre>
+    </div>
+    <div class="panel"><h3><span class="chip ok">REAL</span> Multi-tenant web and API platform</h3>
+      <div class="case">
+        <p class="ctx">Web and mobile platform with organizations as tenants. API permission tests first, then AI-assisted Playwright: Claude Code agents generate and run the tests, an engineer reviews every one before it is merged.</p>
+        <div class="facts"><div class="fact"><b>~690</b><span>end-to-end tests on staging</span></div><div class="fact"><b>16/16</b><span>web E2E green on staging run</span></div></div>
+        <ul class="find">
+          <li><span class="chip p1">P1</span><span>Cross-tenant data access (BOLA): a user of one organization could read another's records by changing the ID.</span></li>
+          <li><span class="chip p1">P1</span><span>Mass assignment: extra fields in an update request were accepted and stored.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="skill" id="ci-github-actions">
+  <div class="skill-head"><span class="id">skills/ci-github-actions</span><h2>CI that answers a pull request in minutes</h2><p>Smoke and API tests on every PR, the full suite sharded on main, regression and a load smoke at night. Reports merge into one HTML file and a short result lands in the job summary.</p></div>
+  <div class="cols">
+    <div class="panel"><h3><span class="chip info">SIM</span> templates/tests.yml</h3>
+<pre class="log"><span class="d">$ actionlint templates/tests.yml templates/nightly.yml</span>
+<span class="p">no problems found</span>
+
+<span class="a">pull_request</span>
+  api ─────────────── 2m  <span class="p">✓</span>
+  e2e shard 1/4 ───── 4m  <span class="p">✓</span>
+  e2e shard 2/4 ───── 4m  <span class="f">✗</span> 1 failed
+  e2e shard 3/4 ───── 4m  <span class="p">✓</span>
+  e2e shard 4/4 ───── 3m  <span class="p">✓</span>
+  e2e-report ──────── 1m  <span class="f">✗</span>  <span class="d">← the required check</span>
+
+<span class="a">job summary</span>
+  | passed | failed | flaky | skipped | duration |
+  |   212  |    1   |   2   |    4    |   251 s  |
+  HTML report: e2e-html-report artifact</pre>
+      <p class="note">Shard timings and counts in this panel are illustrative.</p>
+    </div>
+    <div class="panel"><h3><span class="chip ok">REAL</span> Enterprise security products</h3>
+      <div class="case">
+        <p class="ctx">Access-management and identity-protection products at Broadcom. UI and API automation in Java (Selenium, JUnit/TestNG) ran in Jenkins pipelines that gated every release, with performance tests on multi-node deployments.</p>
+        <ul class="find">
+          <li><span class="chip info">lesson</span><span>A stable job name for the required check matters more than the matrix inside it.</span></li>
+          <li><span class="chip info">lesson</span><span>Fast checks on every change, expensive ones on a schedule: nobody waits an hour for a PR.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="skill" id="perf-load-k6">
+  <div class="skill-head"><span class="id">skills/perf-load-k6</span><h2>A capacity number someone can decide on</h2><p>Workload model before code, SLOs as k6 thresholds per journey, five profiles from smoke to soak, and a one-page result with the bottleneck and its evidence.</p></div>
+  <div class="cols">
+    <div class="panel"><h3><span class="chip info">SIM</span> Smoke profile against the public k6 demo API, real run</h3>
+<pre class="log"><span class="d">$ k6 run --env PROFILE=smoke templates/load.js</span>
+  <span class="p">✓</span> browse: status 200
+  <span class="p">✓</span> browse: page has content
+  <span class="p">✓</span> order: status 200
+  <span class="p">✓</span> order: pizza returned
+
+  <span class="p">✓</span> checks ............ 100.00%  22 of 22
+  <span class="p">✓</span> http_req_failed ...   0.00%   0 of 11
+    http_req_duration{journey:browse}  p95=<span class="a">192.73ms</span>  <span class="d">threshold &lt; 500ms</span>
+    http_req_duration{journey:order}   p95=<span class="a">295.73ms</span>  <span class="d">threshold &lt; 1000ms</span></pre>
+      <div class="tbl"><table><thead><tr><th>Profile</th><th>Question it answers</th></tr></thead><tbody>
+        <tr><td>smoke</td><td>Does the script work?</td></tr>
+        <tr><td>load</td><td>Do we meet the SLOs at expected peak?</td></tr>
+        <tr><td>stress</td><td>Where does it break, and how?</td></tr>
+        <tr><td>spike</td><td>Do we survive a burst and recover?</td></tr>
+        <tr><td>soak</td><td>Do we leak over hours?</td></tr>
+      </tbody></table></div>
+    </div>
+    <div class="panel"><h3><span class="chip ok">REAL</span> E-commerce platform</h3>
+      <div class="case">
+        <p class="ctx">Online store with a catalogue sync from an external system. Performance (k6) and accessibility (axe-core) checks with baselines committed to the repo, so a slower or less accessible build fails instead of slipping through.</p>
+        <ul class="find">
+          <li><span class="chip info">lesson</span><span>Tag requests per journey. One slow endpoint disappears inside a global average.</span></li>
+          <li><span class="chip info">lesson</span><span>Include the background sync in the load model; it competes for the same database.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="skill" id="explore-session">
+  <div class="skill-head"><span class="id">skills/explore-session</span><h2>Exploration with a charter and a debrief</h2><p>One-line charter, three to five heuristics that fit the target, tagged notes with evidence captured on the spot, and a debrief that says what was covered and what was not.</p></div>
+  <div class="cols">
+    <div class="panel"><h3><span class="chip info">SIM</span> Session notes</h3>
+<pre class="log"><span class="a">charter</span>  Explore plan upgrade with no saved card
+         to discover whether access changes without a payment   <span class="d">60 min</span>
+<span class="a">heuristics</span>  Money · Interruptions · Consistency
+
+10:02 TEST  Membership → Supporter, payment info says "no card on file"
+10:04 <span class="f">BUG</span>   plan switched at once, no card asked, no charge
+            <span class="d">evidence: shot-01.png, POST /subscription 200</span>
+10:09 <span class="w">ISSUE</span> billing history empty: expected or missing?
+10:15 TEST  cancel → confirm → reload
+10:16 <span class="f">BUG</span>   still "Active", next payment date unchanged
+10:21 IDEA  separate charter: downgrade timing
+
+<span class="a">debrief</span>  covered upgrade + cancel; not reached: refunds
+         confidence in billing: <span class="f">low</span></pre>
+    </div>
+    <div class="panel"><h3><span class="chip ok">REAL</span> Subscription content platform, paid trial</h3>
+      <div class="case">
+        <p class="ctx">Paid exploratory trial of a creator subscription platform across roles (creator, subscriber, pending user), Chrome desktop, mobile widths and Safari on iPhone. Bugs, UX recommendations and coverage reported separately.</p>
+        <div class="facts"><div class="fact"><b>20</b><span>confirmed bugs</span></div><div class="fact"><b>6</b><span>P1 critical</span></div><div class="fact"><b>3</b><span>browsers and devices</span></div></div>
+        <ul class="find">
+          <li><span class="chip p1">P1</span><span>A card payment went through, but no subscription or access was granted.</span></li>
+          <li><span class="chip p1">P1</span><span>Plan upgrade worked with no payment method on file.</span></li>
+          <li><span class="chip p1">P1</span><span>The edit URL of a post returned another creator's private text to any signed-in user.</span></li>
+          <li><span class="chip p2">P2</span><span>Plan prices on the cards did not match the checkout total.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="skill" id="web3-synpress">
+  <div class="skill-head"><span class="id">skills/web3-synpress</span><h2>The chain is the source of truth</h2><p>Synpress drives MetaMask and the dApp, viem reads the chain. Every state-changing test ends with the receipt status and the on-chain balance, then checks that the UI agrees.</p></div>
+  <div class="cols">
+    <div class="panel"><h3><span class="chip info">SIM</span> Transfer test on a local Anvil chain</h3>
+<pre class="log"><span class="d">$ anvil --chain-id 31337 &amp;&amp; npx synpress &amp;&amp; npx playwright test</span>
+send ETH
+  1 read balance of recipient            1000.0 ETH
+  2 dApp: connect → fill 0.5 → Send
+  3 MetaMask: confirmTransaction()
+  4 UI shows "Transaction confirmed"
+  5 waitForTransactionReceipt(hash)      status: <span class="f">reverted</span>
+  6 balance of recipient                 1000.0 ETH  <span class="f">unchanged</span>
+  <span class="f">✗</span> expected receipt.status "success", received "reverted"
+<span class="d">→ bug: UI reports success from the wallet response, not from the receipt</span>
+
+  <span class="p">✓</span> rejected transaction leaves the form usable and moves nothing</pre>
+      <p class="note">Simulated scenario showing the failure the test is built to catch.</p>
+    </div>
+    <div class="panel"><h3><span class="chip ok">REAL</span> Web3 governance and wallets</h3>
+      <div class="case">
+        <p class="ctx">QA automation at Tally: Synpress tests in TypeScript for transactions, wallet interactions and governance votes, run in GitHub Actions, with results checked through on-chain calls and the GraphQL API.</p>
+        <ul class="find">
+          <li><span class="chip p1">P1</span><span>A transfer that both the UI and the API reported as successful, while the tokens never moved on-chain. Found only because the test read the chain.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Volodymyr Sorochan · Senior QA and Security Engineer · <a href="https://github.com/sorvo01">github.com/sorvo01</a></p>
+  <p>Real cases describe the author's own work with client names and identifiers removed. Simulated runs are reproducible from the files in this repository unless marked illustrative.</p>
+</footer>
+</div>
+</body>
+</html>

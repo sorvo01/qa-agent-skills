@@ -1,0 +1,128 @@
+# Pull request and main-branch test pipeline.
+# App under test: a deployed environment passed as BASE_URL (repo variable or secret).
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      grep:
+        description: "Playwright --grep filter (optional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  BASE_URL: ${{ vars.BASE_URL }}
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: API tests
+        run: npx playwright test tests/api --reporter=line,junit
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: results/api-junit.xml
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          VIEWER_TOKEN: ${{ secrets.VIEWER_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: api-results
+          path: results/
+          retention-days: 7
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: E2E (smoke on PRs, full on main)
+        run: |
+          GREP="${{ inputs.grep }}"
+          if [ -z "$GREP" ] && [ "${{ github.event_name }}" = "pull_request" ]; then GREP="@smoke"; fi
+          npx playwright test tests/e2e \
+            --project=chromium \
+            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
+            --reporter=blob \
+            ${GREP:+--grep "$GREP"}
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 3
+
+  e2e-report:
+    # Require THIS job in branch protection: its name does not change with the matrix.
+    if: ${{ !cancelled() }}
+    needs: [e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+      - name: Merge shard reports
+        run: npx playwright merge-reports --reporter=html,json all-blob-reports
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
+      - name: Job summary
+        run: |
+          node -e '
+            const s = require("./merged.json").stats;
+            const lines = [
+              "### E2E results",
+              `| passed | failed | flaky | skipped | duration |`,
+              `|---|---|---|---|---|`,
+              `| ${s.expected} | ${s.unexpected} | ${s.flaky} | ${s.skipped} | ${Math.round(s.duration/1000)} s |`,
+              "",
+              "HTML report: see the e2e-html-report artifact."
+            ];
+            require("fs").appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+            if (s.unexpected > 0) process.exit(1);
+          '
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-html-report
+          path: playwright-report/
+          retention-days: 14
+      - name: Fail if any shard failed
+        if: ${{ contains(needs.e2e.result, 'failure') }}
+        run: exit 1

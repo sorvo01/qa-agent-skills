@@ -1,0 +1,53 @@
+# Nightly full regression on three browsers plus a k6 performance smoke.
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * 1-5"   # 02:00 UTC, weekdays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASE_URL: ${{ vars.BASE_URL }}
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.project }}
+      - run: npx playwright test --project=${{ matrix.project }} --retries=2
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-${{ matrix.project }}
+          path: playwright-report/
+          retention-days: 14
+
+  perf-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: k6 smoke (fails the job when a threshold is crossed)
+        run: k6 run --env BASE_URL="$BASE_URL" --env PROFILE=smoke --summary-export=k6-summary.json perf/load.js
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: k6-summary
+          path: k6-summary.json

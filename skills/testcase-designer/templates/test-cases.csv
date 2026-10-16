@@ -1,0 +1,8 @@
+ID,Title,Risk,Priority,Preconditions,Steps,Expected,Source,Automate
+TC-AUTH-001,Registered user signs in with email and password → lands on dashboard,R1,P1,"User qa.user1@example.test exists, email verified","1. Open /login
+2. Enter qa.user1@example.test and the fixture password
+3. Click Sign in","Dashboard opens, header shows the user's name, no error toast",STORY-12,yes
+TC-AUTH-002,Sign-in with a 7-character password is rejected before submit,R2,P2,None,"1. Open /signup
+2. Enter a 7-character password
+3. Move focus out of the field","Inline error ""Use at least 8 characters"" shown, Create account stays disabled",STORY-12 AC3,yes
+TC-AUTH-003,Viewer cannot delete a project through the API,R3,P1,"Token of a user with role Viewer, project P-1 exists","1. Send DELETE /api/projects/P-1 with the Viewer token","HTTP 403, project P-1 still returned by GET /api/projects/P-1",RBAC spec 2.4,yes
